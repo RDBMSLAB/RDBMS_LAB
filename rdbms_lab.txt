@@ -788,6 +788,37 @@ select e_id, ename, age, salary into a,b,c,d from emp where e_id = a;
 dbms_output.put_line(a || ' ' || b ||' ' || c || ' '|| d );
 END;
 /
+explicit cursor:
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_e_id employee.e_id%TYPE := &Enter_EID;  -- Accepts input from user
+    v_name employee.name%TYPE;
+    v_dept employee.department%TYPE;
+    v_salary employee.salary%TYPE;
+
+    CURSOR emp_cursor IS
+        SELECT name, department, salary
+        FROM employee
+        WHERE e_id = v_e_id;
+
+BEGIN
+    OPEN emp_cursor;
+    FETCH emp_cursor INTO v_name, v_dept, v_salary;
+
+    IF emp_cursor%FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Employee Details:');
+        DBMS_OUTPUT.PUT_LINE('Name: ' || v_name);
+        DBMS_OUTPUT.PUT_LINE('Department: ' || v_dept);
+        DBMS_OUTPUT.PUT_LINE('Salary: ' || v_salary);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('No employee found with ID ' || v_e_id);
+    END IF;
+
+    CLOSE emp_cursor;
+END;
+/
+
 QUE : update the salary of those employees whose salary is greater than 15000 using cursor ?
 E_ID ENAME AGE SALARY
 ---------- -------------------- ---------- ----------
@@ -1097,7 +1128,7 @@ CURSOR rdbms_students IS
 SELECT s.snum
 FROM student s
 JOIN enrolled e ON s.snum = e.anum
-WHERE e.came = 'rdbms' for update of s.level;
+WHERE e.cname = 'rdbms' for update of s.level;
 BEGIN
 FOR stu_rec IN rdbms_students LOOP
 UPDATE student
@@ -1105,5 +1136,43 @@ SET level = 'SR'
 WHERE current of rdbms_students;
 END LOOP;
 COMMIT;
+END;
+/
+using explicit cursor
+DECLARE
+   CURSOR cur_rdbms_students IS
+      SELECT e.anum
+      FROM Enrolled e
+      WHERE e.cname = 'RDBMS'
+      FOR UPDATE OF level;
+
+   v_snum Student.snum%TYPE;
+   v_updated_rows NUMBER := 0;
+
+BEGIN
+   OPEN cur_rdbms_students;
+
+   LOOP
+      FETCH cur_rdbms_students INTO v_snum;
+      EXIT WHEN cur_rdbms_students%NOTFOUND;
+
+      -- Update and count affected rows
+      UPDATE Student
+      SET level = 'SR'
+      WHERE CURRENT OF cur_rdbms_students;
+
+      -- Accumulate row count
+      v_updated_rows := v_updated_rows + SQL%ROWCOUNT;
+   END LOOP;
+
+   CLOSE cur_rdbms_students;
+   COMMIT;
+
+   DBMS_OUTPUT.PUT_LINE('Total students updated: ' || v_updated_rows);
+
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+      ROLLBACK;
 END;
 /
